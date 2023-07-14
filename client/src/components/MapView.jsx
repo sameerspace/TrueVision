@@ -1,39 +1,60 @@
-import {Stack, TextField} from '@mui/material'
-import {
-	GoogleMapsProvider,
-	useGoogleMap,
-} from '@ubilabs/google-maps-react-hooks'
-import {useEffect, useRef, useState} from 'react'
+import { CircularProgress } from '@mui/material';
+import { GoogleMap, useJsApiLoader, MarkerF, DrawingManagerF } from '@react-google-maps/api';
+import { useEffect, useState } from 'react';
 
-const MapView = () => {
-	const [mapContainer, setMapContainer] = useState(null)
-	const [myPos, setMyPos] = useState(null)
-	const divRef = useRef()
+const containerStyle = {
+  width: '100%',
+  height: '100vh'
+}
 
-	useEffect(() => {
-		navigator.geolocation.getCurrentPosition(
-			(data) => {
-				setMyPos({lat: data.coords.latitude, lng: data.coords.longitude})
-			},
-			(error) => console.log(error)
-		)
-	}, [])
 
-	return (
-		<GoogleMapsProvider
-			googleMapsAPIKey={import.meta.env.VITE_MAPS_API_KEY}
-			mapOptions={{
-				zoom: 15,
-				center: myPos,
-			}}
-			mapContainer={mapContainer}
-		>
-			<div className='lat-lng'>
-				<input type='text' />
-			</div>
-			<div ref={(node) => setMapContainer(node)} style={{height: '92vh'}}></div>
-		</GoogleMapsProvider>
-	)
+function MapView() {
+
+  const [myLoc, setMyLoc] = useState(null)
+  const [markers, setMarkers] = useState([])
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_MAPS_API_KEY,
+    libraries: ['drawing'],
+  })
+
+  useEffect(()=>{
+	navigator.geolocation.getCurrentPosition((pos) => {
+		setMyLoc({
+			lat: pos.coords.latitude,
+			lng: pos.coords.longitude,
+		})
+	},(err) => {
+		console.log(err)
+	})
+  },[])
+
+  const handleMapClick = (e) => {
+    setMarkers([...markers,{
+		lat: e.latLng.lat(),  
+		lng: e.latLng.lng(),
+	}])
+  }
+
+  return isLoaded ? (
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={myLoc}
+        zoom={15}
+		onClick={handleMapClick}
+      >
+        <>
+        { markers.map((loc) => <MarkerF key={`${loc.lat}-${loc.lng}`} position={loc} />) }
+        <DrawingManagerF
+          options={{
+            polygonOptions:{}
+          }}
+        >
+        </DrawingManagerF>
+        </>
+      </GoogleMap>
+  ) : <><CircularProgress/></>
 }
 
 export default MapView
